@@ -1,92 +1,243 @@
+import argparse
 import gym
 import numpy as np
-import torch
-import argparse
 import os
+import torch
 
-import utils
-import DDPG
 import BCQ
+import DDPG
+import utils
 
 
-# Runs policy for X episodes and returns average reward
-def evaluate_policy(policy, eval_episodes=10):
-    avg_reward = 0.
-    for _ in xrange(eval_episodes):
-        obs = env.reset()
-        done = False
-        while not done:
-            action = policy.select_action(np.array(obs))
-            obs, reward, done, _ = env.step(action)
-            avg_reward += reward
+# Generates BCQ's replay buffer from numpy dataset format for RSPMNs
+def generate_buffer_from_dataset(dataset, vars_in_single_time_step,
+                                 sequence_length, state_vars, action_vars,
+                                 device, env='test', seed=0, buffer_name='testBuffer'
+                                 ):
+    # For saving files
+    setting = f"{env}_{seed}"
+    buffer_name = f"{buffer_name}_{setting}"
+    # buffer_name = 'testBuffer'
 
-    avg_reward /= eval_episodes
+    # Initialize buffer
+    rows = dataset.shape[0]
+    replay_buffer = utils.ReplayBuffer(state_vars, action_vars, device,
+                                       max_size=rows*sequence_length)
+    replay_buffer.size = rows*(sequence_length-1) + 1
+    # print(replay_buffer.size)
+    replay_buffer.ptr = rows*(sequence_length-1)
 
-    print
-    "---------------------------------------"
-    print
-    "Evaluation over %d episodes: %f" % (eval_episodes, avg_reward)
-    print
-    "---------------------------------------"
-    return avg_reward
+    j = 0
+    for i in range(0, sequence_length-1):
+        if i == 0:
+            single_transition = dataset[:, j:j+vars_in_single_time_step+state_vars]
+            # print(single_transition)
+            # print(single_transition[
+            #       :, 0:state_vars
+            #       ].reshape(-1, state_vars))
+            replay_buffer.state = single_transition[
+                                  :, 0:state_vars
+                                  ].reshape(-1, state_vars)
+            # print(replay_buffer.state)
+
+            replay_buffer.action = single_transition[
+                                   :, state_vars:state_vars+action_vars
+                                   ].reshape(-1, action_vars)
+            replay_buffer.reward = single_transition[
+                                   :, state_vars+action_vars
+                                   ].reshape(-1,1)
+            replay_buffer.next_state = single_transition[
+                                       :, state_vars+action_vars+1:
+                                       ].reshape(-1, state_vars)
+            if i == sequence_length - 2:
+                replay_buffer.not_done = np.zeros((rows, 1))
+
+            else:
+                replay_buffer.not_done = np.ones((rows, 1))
+
+        else:
+
+            single_transition = dataset[:,
+                                j:j + vars_in_single_time_step + state_vars]
+            # print(single_transition)
+            # print(single_transition[
+            #       :, 0:state_vars
+            #       ].reshape(-1, state_vars))
+            replay_buffer.state = np.concatenate(
+                (replay_buffer.state, single_transition[
+                                  :, 0:state_vars
+                                  ].reshape(-1, state_vars)), axis=0
+            )
+            # print(replay_buffer.state)
+
+            replay_buffer.action = np.concatenate((replay_buffer.action, single_transition[
+                                   :, state_vars:state_vars + action_vars
+                                   ].reshape(-1, action_vars)), axis=0)
+
+            replay_buffer.reward = np.concatenate((replay_buffer.reward, single_transition[
+                                   :, state_vars + action_vars
+                                   ].reshape(-1, 1)), axis=0)
+
+            replay_buffer.next_state = np.concatenate((replay_buffer.next_state, single_transition[
+                                       :, state_vars + action_vars + 1:
+                                       ].reshape(-1, state_vars)), axis=0)
+
+            if i == sequence_length - 2:
+                replay_buffer.not_done = np.concatenate(
+                    (replay_buffer.not_done, np.zeros((rows, 1))), axis=0
+                )
+            else:
+                replay_buffer.not_done = np.concatenate(
+                    (replay_buffer.not_done, np.ones((rows, 1))), axis=0
+                )
+
+        j = j+vars_in_single_time_step
+
+        # # Store data in replay buffer
+        # replay_buffer.add(state, action, next_state, reward, done_bool)
+
+    # print(replay_buffer.state)
+    if not os.path.exists("./buffers"):
+        os.makedirs("./buffers")
+
+    replay_buffer.save(f"./buffers/{buffer_name}")
 
 
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--env_name",
-                        default="Hopper-v1")  # OpenAI gym environment name
-    parser.add_argument("--seed", default=0,
-                        type=int)  # Sets Gym, PyTorch and Numpy seeds
-    parser.add_argument("--buffer_type",
-                        default="Robust")  # Prepends name to filename.
-    parser.add_argument("--eval_freq", default=5e3,
-                        type=float)  # How often (time steps) we evaluate
-    parser.add_argument("--max_timesteps", default=1e6,
-                        type=float)  # Max time steps to run environment for
-    args = parser.parse_args()
-
-    file_name = "BCQ_%s_%s" % (args.env_name, str(args.seed))
-    buffer_name = "%s_%s_%s" % (args.buffer_type, args.env_name, str(args.seed))
-    print
-    "---------------------------------------"
-    print
-    "Settings: " + file_name
-    print
-    "---------------------------------------"
+# Trains BCQ offline
+def train_BCQ(state_dim, action_dim, max_action, device, args):
 
     if not os.path.exists("./results"):
         os.makedirs("./results")
 
-    env = gym.make(args.env_name)
+    if not os.path.exists("./models"):
+        os.makedirs("./models")
 
-    env.seed(args.seed)
-    torch.manual_seed(args.seed)
-    np.random.seed(args.seed)
-
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
+    # For saving files
+    setting = f"{args.env}_{args.seed}"
+    buffer_name = f"{args.buffer_name}_{setting}"
 
     # Initialize policy
-    policy = BCQ.BCQ(state_dim, action_dim, max_action)
+    policy = BCQ.BCQ(state_dim, action_dim, max_action, device, args.discount,
+                     args.tau, args.lmbda, args.phi)
 
     # Load buffer
-    replay_buffer = utils.ReplayBuffer()
-    replay_buffer.load(buffer_name)
+    replay_buffer = utils.ReplayBuffer(state_dim, action_dim, device)
+    replay_buffer.load(f"./buffers/{buffer_name}")
 
     evaluations = []
-
     episode_num = 0
     done = True
-
     training_iters = 0
-    while training_iters < args.max_timesteps:
-        pol_vals = policy.train(replay_buffer, iterations=int(args.eval_freq))
 
-        evaluations.append(evaluate_policy(policy))
-        np.save("./results/" + file_name, evaluations)
+    while training_iters < args.max_timesteps:
+        pol_vals = policy.train(replay_buffer, iterations=int(args.eval_freq),
+                                batch_size=args.batch_size)
+
+        evaluations.append(eval_policy(policy, args.env, args.seed))
+        np.save(f"./results/BCQ_{setting}", evaluations)
 
         training_iters += args.eval_freq
-        print
-        "Training iterations: " + str(training_iters)
+        print(f"Training iterations: {training_iters}")
+
+    return policy
+
+
+# Runs policy for X episodes and returns average reward
+# A fixed seed is used for the eval environment
+def eval_policy(policy, env_name, seed, eval_episodes=10):
+    eval_env = gym.make(env_name)
+    eval_env.seed(seed + 100)
+
+    avg_reward = 0.
+    for _ in range(eval_episodes):
+        state, done = eval_env.reset(), False
+        while not done:
+            action = policy.select_action(np.array(state))
+            state, reward, done, _ = eval_env.step(action)
+            avg_reward += reward
+
+    avg_reward /= eval_episodes
+
+    print("---------------------------------------")
+    print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
+    print("---------------------------------------")
+    return avg_reward
+
+
+class args:
+    def __init__(self, env='Dummy-v0', seed=0, buffer_name='testBuffer',
+                 eval_freq=5e3, max_timesteps=1e6, start_timesteps=25e3,
+                 rand_action_p=0.3, gaussian_std=0.3, batch_size=100,
+                 discount=1, tau=0.005, lmbda=0.75, phi=0.05
+                 ):
+        self.env = env
+        self.seed = seed
+        self.buffer_name = buffer_name
+        self.eval_freq = eval_freq
+        self.max_timesteps = max_timesteps
+        self.start_timesteps = start_timesteps
+        self.rand_action_p = rand_action_p
+        self.gaussian_std = gaussian_std
+        self.batch_size = batch_size
+        self.discount = discount
+        self.tau = tau
+        self.lmbda = lmbda
+        self.phi = phi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#     print("---------------------------------------")
+#
+#     if args.generate_buffer_from_dataset:
+#         print(f'Setting: Generating buffer from dataset, Env: {args.env}, Seed: {args.seed}')
+#         print(f"state_dim {args.state_dim}")
+#         print(f"state_dim {args.action_dim}")
+#         print(f"state_dim {args.max_action}")
+#         print(f"state_dim {args.sequence_length}")
+#
+#
+#     else:
+#         print(f"Setting: Training BCQ, Env: {args.env}, Seed: {args.seed}")
+#     print("---------------------------------------")
+#
+#     if not os.path.exists("./results"):
+#         os.makedirs("./results")
+#
+#     if not os.path.exists("./models"):
+#         os.makedirs("./models")
+#
+#     if not os.path.exists("./buffers"):
+#         os.makedirs("./buffers")
+#
+#     torch.manual_seed(args.seed)
+#     np.random.seed(args.seed)
+#
+#     state_dim = args.state_dim
+#     action_dim = args.action_dim
+#     max_action = args.max_action
+#
+#     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#
+#     if args.generate_buffer_from_dataset:
+#         generate_buffer_from_dataset(
+#             args.dataset, args.vars_in_single_time_step,
+#             args.sequence_length,
+#             state_dim, action_dim, device, args
+#         )
+#     else:
+#         train_BCQ(state_dim, action_dim, max_action, device, args)
+#
+#
+# if __name__ == "__main__":
+#     main()
