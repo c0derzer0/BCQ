@@ -129,6 +129,13 @@ class BCQ(object):
 			ind = q1.argmax(0)
 		return action[ind].cpu().data.numpy().flatten()
 
+	def get_q_values(self, state):
+		with torch.no_grad():
+			state = torch.FloatTensor(state.reshape(1, -1)).repeat(100, 1).to(self.device)
+			action = self.actor(state, self.vae.decode(state))
+			q1 = self.critic.q1(state, action)
+			return q1
+
 
 	def train(self, replay_buffer, iterations, batch_size=100):
 
