@@ -160,8 +160,8 @@ def train_DBCQ(dargs, device):
     policy = DBCQ.DBCQ(dargs.parameters, dargs.env_properties, device)
 
     # Load buffer
-    replay_buffer = utils.ReplayBuffer(dargs.parameters["state_dim"],
-                                       dargs.parameters["num_actions"], device)
+    replay_buffer = utils.ReplayBuffer(dargs.env_properties["state_dim"],
+                                       dargs.env_properties["num_actions"], device)
     replay_buffer.load(f"./buffers/{buffer_name}")
 
     evaluations = []
