@@ -7,7 +7,7 @@ import torch
 import BCQ
 import DDPG
 import utils
-
+from collections import defaultdict
 
 # Generates BCQ's replay buffer from numpy dataset format for RSPMNs
 def generate_buffer_from_dataset(dataset, vars_in_single_time_step,
@@ -233,8 +233,8 @@ class dargs:
                  initial_epsilon=0, end_epsilon=0,
                  epsilon_decay_period=1, evaluation_epsilon=0,
                  optimizer=None, optimizer_parameters=None):
-        self.env_properties = {}
-        self.parameters = {}
+        self.env_properties = defaultdict()
+        self.parameters = defaultdict()
         self.env = env
         self.seed = seed
         self.buffer_name = buffer_name
@@ -252,7 +252,7 @@ class dargs:
         self.parameters["initial_epsilon"] = initial_epsilon
         self.parameters["end_epsilon"] = end_epsilon
         self.parameters["epsilon_decay_period"] = epsilon_decay_period
-        self.arameters["evaluation_epsilon"] = evaluation_epsilon
+        self.parameters["evaluation_epsilon"] = evaluation_epsilon
 
 
 
