@@ -100,11 +100,14 @@ class DBCQ(object):
         # Sample replay buffer
         state, action, next_state, reward, done = replay_buffer.sample\
             (replay_buffer.size)
+        print(f"state, action, next_state, reward, don {state, action, next_state, reward, done}")
 
         state = torch.FloatTensor(state).reshape(1, 4, 84, 84).to(
             self.device)
+        print(f"state {state}")
         next_state = torch.FloatTensor(next_state).reshape(1, 4, 84, 84).to(
             self.device)
+        print(f"next_state {next_state}")
 
         # Compute the target Q value
         with torch.no_grad():
