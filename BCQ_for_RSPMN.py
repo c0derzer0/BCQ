@@ -143,7 +143,7 @@ def train_BCQ(state_dim, action_dim, max_action, device, args):
 
 
 # Trains BCQ offline
-def train_DBCQ(args, device ):
+def train_DBCQ(dargs, device ):
 
     if not os.path.exists("./results"):
         os.makedirs("./results")
@@ -152,15 +152,15 @@ def train_DBCQ(args, device ):
         os.makedirs("./models")
 
     # For saving files
-    setting = f"{args.env}_{args.seed}"
-    buffer_name = f"{args.buffer_name}_{setting}"
+    setting = f"{dargs.env}_{dargs.seed}"
+    buffer_name = f"{dargs.buffer_name}_{setting}"
 
     # Initialize policy
-    policy = BCQ.BCQ(args.parameters, args.env_properties, device)
+    policy = BCQ.BCQ(dargs.parameters, dargs.env_properties, device)
 
     # Load buffer
-    replay_buffer = utils.ReplayBuffer(args.parameters["state_dim"],
-                                       args.parameters["num_actions"], device)
+    replay_buffer = utils.ReplayBuffer(dargs.parameters["state_dim"],
+                                       dargs.parameters["num_actions"], device)
     replay_buffer.load(f"./buffers/{buffer_name}")
 
     evaluations = []
@@ -171,7 +171,7 @@ def train_DBCQ(args, device ):
     while training_iters < args.max_timesteps:
         pol_vals = policy.train(replay_buffer)
 
-        evaluations.append(eval_policy(policy, args.env, args.seed))
+        evaluations.append(eval_policy(policy, dargs.env, dargs.seed))
         np.save(f"./results/BCQ_{setting}", evaluations)
 
         training_iters += args.eval_freq
@@ -227,7 +227,7 @@ class dargs:
 
     def __init__(self, num_actions, state_dim,
                  env='Dummy-v0', seed=0, buffer_name='testBuffer',
-                  discount=1,
+                 discount=1, eval_freq=5e3, max_timesteps=1e6,
                  target_update_frequency=5e3, update_frequency=5e3,
                  tau=0.005,
                  initial_epsilon=0, end_epsilon=0,
@@ -238,6 +238,8 @@ class dargs:
         self.env = env
         self.seed = seed
         self.buffer_name = buffer_name
+        self.eval_freq = eval_freq
+        self.max_timesteps = max_timesteps
 
         self.env_properties["num_actions"] = num_actions
         self.env_properties["atari"] = False
