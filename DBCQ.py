@@ -110,16 +110,22 @@ class DBCQ(object):
         with torch.no_grad():
 
             q, imt, i = self.critic(next_state)
+            print(f"q, imt, i {q, imt, i}")
             imt = imt.exp()
             imt = (imt/imt.max(1, keepdim=True)[0] > self.threshold).float()
             next_action = (imt * q + (1 - imt) * -1e6).argmax(1, keepdim=True)
+            print(f"next_action {next_action}")
 
             q, imt, i = self.critic_target(next_state)
+            print(f"target q, imt, i {q, imt, i}")
+
             target_Q = reward + done * self.discount * q.gather(1, next_action).reshape(-1, 1)
+            print(f"target_Q {target_Q}")
 
         # Get current Q estimate
         current_Q, imt, i = self.critic(state)
         current_Q = current_Q.gather(1, action)
+        print(f"current_Q {current_Q}")
 
         # Compute critic loss
         q_loss = F.smooth_l1_loss(current_Q, target_Q)
@@ -131,10 +137,12 @@ class DBCQ(object):
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
+        print(f"Optimize the critic")
 
         # Update target network by polyak or full copy every X iterations.
         self.iterations += 1
         self.maybe_update_target()
+        print(f"Update target network by polyak")
 
 
     def polyak_target_update(self):
