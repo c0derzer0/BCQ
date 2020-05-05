@@ -101,8 +101,14 @@ class DBCQ(object):
         state, action, next_state, reward, done = replay_buffer.sample\
             (replay_buffer.size)
 
+        state = torch.FloatTensor(state).reshape(1, 4, 84, 84).to(
+            self.device)
+        next_state = torch.FloatTensor(next_state).reshape(1, 4, 84, 84).to(
+            self.device)
+
         # Compute the target Q value
         with torch.no_grad():
+
             q, imt, i = self.critic(next_state)
             imt = imt.exp()
             imt = (imt/imt.max(1, keepdim=True)[0] > self.threshold).float()
