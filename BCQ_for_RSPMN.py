@@ -142,6 +142,44 @@ def train_BCQ(state_dim, action_dim, max_action, device, args):
     return policy
 
 
+# Trains BCQ offline
+def train_DBCQ(args, device ):
+
+    if not os.path.exists("./results"):
+        os.makedirs("./results")
+
+    if not os.path.exists("./models"):
+        os.makedirs("./models")
+
+    # For saving files
+    setting = f"{args.env}_{args.seed}"
+    buffer_name = f"{args.buffer_name}_{setting}"
+
+    # Initialize policy
+    policy = BCQ.BCQ(args.parameters, args.env_properties, device)
+
+    # Load buffer
+    replay_buffer = utils.ReplayBuffer(args.parameters["state_dim"],
+                                       args.parameters["num_actions"], device)
+    replay_buffer.load(f"./buffers/{buffer_name}")
+
+    evaluations = []
+    episode_num = 0
+    done = True
+    training_iters = 0
+
+    while training_iters < args.max_timesteps:
+        pol_vals = policy.train(replay_buffer)
+
+        evaluations.append(eval_policy(policy, args.env, args.seed))
+        np.save(f"./results/BCQ_{setting}", evaluations)
+
+        training_iters += args.eval_freq
+        print(f"Training iterations: {training_iters}")
+
+    return policy
+
+
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
 def eval_policy(policy, env_name, seed, eval_episodes=10):
@@ -185,8 +223,36 @@ class args:
         self.lmbda = lmbda
         self.phi = phi
 
+class dargs:
 
+    def __init__(self, num_actions, state_dim,
+                 env='Dummy-v0', seed=0, buffer_name='testBuffer',
+                  discount=1,
+                 target_update_frequency=5e3, update_frequency=5e3,
+                 tau=0.005,
+                 initial_epsilon=0, end_epsilon=0,
+                 epsilon_decay_period=1, evaluation_epsilon=0,
+                 optimizer=None, optimizer_parameters=None):
+        self.env_properties = {}
+        self.parameters = {}
+        self.env = env
+        self.seed = seed
+        self.buffer_name = buffer_name
 
+        self.env_properties["num_actions"] = num_actions
+        self.env_properties["atari"] = False
+        self.env_properties["state_dim"] = state_dim
+
+        self.parameters["optimizer"] = optimizer
+        self.parameters["optimizer_parameters"] = optimizer_parameters
+        self.parameters["discount"] = discount
+        self.parameters["target_update_frequency"] = target_update_frequency
+        self.parameters["update_frequency"] = update_frequency
+        self.parameters["tau"] = tau
+        self.parameters["initial_epsilon"] = initial_epsilon
+        self.parameters["end_epsilon"] = end_epsilon
+        self.parameters["epsilon_decay_period"] = epsilon_decay_period
+        self.arameters["evaluation_epsilon"] = evaluation_epsilon
 
 
 
