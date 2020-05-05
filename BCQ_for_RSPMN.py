@@ -224,13 +224,14 @@ class args:
         self.lmbda = lmbda
         self.phi = phi
 
+
 class dargs:
 
     def __init__(self, num_actions, state_dim,
                  env='Dummy-v0', seed=0, buffer_name='testBuffer',
                  discount=1, eval_freq=5e3, max_timesteps=1e6,
                  target_update_frequency=1e4, update_frequency=5e3,
-                 tau=0.005,
+                 tau=0.005, polyak_target_update=True,
                  initial_epsilon=0, end_epsilon=0,
                  epsilon_decay_period=1, evaluation_epsilon=0,
                  optimizer=None, optimizer_parameters=None):
@@ -256,7 +257,7 @@ class dargs:
         self.parameters["end_epsilon"] = end_epsilon
         self.parameters["epsilon_decay_period"] = epsilon_decay_period
         self.parameters["evaluation_epsilon"] = evaluation_epsilon
-
+        self.parameters["polyak_target_update"] = polyak_target_update
 
 
 
