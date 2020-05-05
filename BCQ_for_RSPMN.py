@@ -5,6 +5,7 @@ import os
 import torch
 
 import BCQ
+import DBCQ
 import DDPG
 import utils
 from collections import defaultdict
@@ -143,7 +144,7 @@ def train_BCQ(state_dim, action_dim, max_action, device, args):
 
 
 # Trains BCQ offline
-def train_DBCQ(dargs, device ):
+def train_DBCQ(dargs, device):
 
     if not os.path.exists("./results"):
         os.makedirs("./results")
@@ -156,7 +157,7 @@ def train_DBCQ(dargs, device ):
     buffer_name = f"{dargs.buffer_name}_{setting}"
 
     # Initialize policy
-    policy = BCQ.BCQ(dargs.parameters, dargs.env_properties, device)
+    policy = DBCQ.DBCQ(dargs.parameters, dargs.env_properties, device)
 
     # Load buffer
     replay_buffer = utils.ReplayBuffer(dargs.parameters["state_dim"],
@@ -168,13 +169,13 @@ def train_DBCQ(dargs, device ):
     done = True
     training_iters = 0
 
-    while training_iters < args.max_timesteps:
+    while training_iters < dargs.max_timesteps:
         pol_vals = policy.train(replay_buffer)
 
         evaluations.append(eval_policy(policy, dargs.env, dargs.seed))
         np.save(f"./results/BCQ_{setting}", evaluations)
 
-        training_iters += args.eval_freq
+        training_iters += dargs.eval_freq
         print(f"Training iterations: {training_iters}")
 
     return policy
@@ -228,7 +229,7 @@ class dargs:
     def __init__(self, num_actions, state_dim,
                  env='Dummy-v0', seed=0, buffer_name='testBuffer',
                  discount=1, eval_freq=5e3, max_timesteps=1e6,
-                 target_update_frequency=5e3, update_frequency=5e3,
+                 target_update_frequency=1e4, update_frequency=5e3,
                  tau=0.005,
                  initial_epsilon=0, end_epsilon=0,
                  epsilon_decay_period=1, evaluation_epsilon=0,
