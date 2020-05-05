@@ -98,7 +98,8 @@ class DBCQ(object):
 
     def train(self, replay_buffer):
         # Sample replay buffer
-        state, action, next_state, reward, done = replay_buffer.sample()
+        state, action, next_state, reward, done = replay_buffer.sample\
+            (replay_buffer.size)
 
         # Compute the target Q value
         with torch.no_grad():
