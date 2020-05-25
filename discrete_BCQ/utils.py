@@ -4,9 +4,9 @@ import numpy as np
 import torch
 
 def ReplayBuffer(state_dim, is_atari, atari_preprocessing, batch_size, buffer_size, device):
-	if is_atari: 
+	if is_atari:
 		return AtariBuffer(state_dim, atari_preprocessing, batch_size, buffer_size, device)
-	else: 
+	else:
 		return StandardBuffer(state_dim, batch_size, buffer_size, device)
 
 
@@ -29,7 +29,7 @@ class AtariBuffer(object):
 
 		self.action = np.zeros((self.max_size, 1), dtype=np.int64)
 		self.reward = np.zeros((self.max_size, 1))
-		
+
 		# not_done only consider "done" if episode terminates due to failure condition
 		# if episode terminates due to timelimit, the transition is not added to the buffer
 		self.not_done = np.zeros((self.max_size, 1))
@@ -110,7 +110,7 @@ class AtariBuffer(object):
 		reward_buffer = np.load(f"{save_folder}_reward.npy")
 		size = min(int(size), self.max_size) if size > 0 else self.max_size
 		self.crt_size = min(reward_buffer.shape[0], size)
-		
+
 		# Adjust crt_size if we're using a custom size
 		size = min(int(size), self.max_size) if size > 0 else self.max_size
 		self.crt_size = min(reward_buffer.shape[0], size)
@@ -180,7 +180,7 @@ class StandardBuffer(object):
 
 	def load(self, save_folder, size=-1):
 		reward_buffer = np.load(f"{save_folder}_reward.npy")
-		
+
 		# Adjust crt_size if we're using a custom size
 		size = min(int(size), self.max_size) if size > 0 else self.max_size
 		self.crt_size = min(reward_buffer.shape[0], size)
@@ -257,11 +257,11 @@ class AtariPreprocessing(object):
 				done = True if crt_lives < self.lives else done
 				self.lives = crt_lives
 
-			if done: 
+			if done:
 				break
 
 			# Second last and last frame
-			f = frame + 2 - self.frame_skip 
+			f = frame + 2 - self.frame_skip
 			if f >= 0:
 				self.env.ale.getScreenGrayscale(self.frame_buffer[f])
 
@@ -299,13 +299,13 @@ class AtariPreprocessing(object):
 # Create environment, add wrapper if necessary and create env_properties
 def make_env(env_name, atari_preprocessing):
 	env = gym.make(env_name)
-	
+
 	is_atari = gym.envs.registry.spec(env_name).entry_point == 'gym.envs.atari:AtariEnv'
 	env = AtariPreprocessing(env, **atari_preprocessing) if is_atari else env
 
 	return (
-		env, 
-		is_atari, 
-		env.observation_space.shape[0], 
+		env,
+		is_atari,
+		1 if "FrozenLake-v0" in env_name else env.observation_space.shape[0], 
 		env.action_space.n
 	)

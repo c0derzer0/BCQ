@@ -36,7 +36,7 @@ def interact_with_environment(env, replay_buffer, is_atari, state_dim, num_actio
 	)
 
 	if args.generate_buffer: policy.load(f"./models/behavioral_{setting}")
-	
+
 	evaluations = []
 
 	state, done = env.reset(), False
@@ -45,7 +45,7 @@ def interact_with_environment(env, replay_buffer, is_atari, state_dim, num_actio
 	episode_timesteps = 0
 	episode_num = 0
 	low_noise_ep = np.random.uniform(0,1) < args.low_noise_p
-
+	eval_policy(policy, args.env, args.seed, eval_episodes=1000)
 	# Interact with the environment for max_timesteps
 	for t in range(int(args.max_timesteps)):
 
@@ -58,12 +58,14 @@ def interact_with_environment(env, replay_buffer, is_atari, state_dim, num_actio
 			if not low_noise_ep and np.random.uniform(0,1) < args.rand_action_p - parameters["eval_eps"]:
 				action = env.action_space.sample()
 			else:
+				# print("state in interact_with_environment:\t"+str(state))
 				action = policy.select_action(np.array(state), eval=True)
 
 		if args.train_behavioral:
 			if t < parameters["start_timesteps"]:
 				action = env.action_space.sample()
 			else:
+				# print("state in interact_with_environment:\t"+str(state))
 				action = policy.select_action(np.array(state))
 
 		# Perform action and log results
@@ -77,7 +79,7 @@ def interact_with_environment(env, replay_buffer, is_atari, state_dim, num_actio
 		if is_atari:
 			reward = info[0]
 			done_float = info[1]
-			
+
 		# Store data in replay buffer
 		replay_buffer.add(state, action, next_state, reward, done_float, done, episode_start)
 		state = copy.copy(next_state)
@@ -140,16 +142,16 @@ def train_BCQ(env, replay_buffer, is_atari, state_dim, num_actions, args, parame
 		parameters["eval_eps"]
 	)
 
-	# Load replay buffer	
+	# Load replay buffer
 	replay_buffer.load(f"./buffers/{buffer_name}")
-	
+
 	evaluations = []
 	episode_num = 0
-	done = True 
+	done = True
 	training_iters = 0
-	
-	while training_iters < args.max_timesteps: 
-		
+
+	while training_iters < args.max_timesteps:
+
 		for _ in range(int(parameters["eval_freq"])):
 			policy.train(replay_buffer)
 
@@ -253,8 +255,8 @@ if __name__ == "__main__":
 	parser.add_argument("--train_behavioral", action="store_true") # If true, train behavioral policy
 	parser.add_argument("--generate_buffer", action="store_true")  # If true, generate buffer
 	args = parser.parse_args()
-	
-	print("---------------------------------------")	
+
+	print("---------------------------------------")
 	if args.train_behavioral:
 		print(f"Setting: Training behavioral, Env: {args.env}, Seed: {args.seed}")
 	elif args.generate_buffer:

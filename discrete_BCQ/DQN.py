@@ -41,7 +41,7 @@ class FC_Q(nn.Module):
 
 class DQN(object):
 	def __init__(
-		self, 
+		self,
 		is_atari,
 		num_actions,
 		state_dim,
@@ -57,7 +57,7 @@ class DQN(object):
 		eps_decay_period = 25e4,
 		eval_eps=0.001,
 	):
-	
+
 		self.device = device
 
 		# Determine network type
@@ -92,9 +92,13 @@ class DQN(object):
 
 		# Select action according to policy with probability (1-eps)
 		# otherwise, select random action
+		# print("state in select_action outside:\t"+str(state))
 		if np.random.uniform(0,1) > eps:
 			with torch.no_grad():
-				state = torch.FloatTensor(state).reshape(self.state_shape).to(self.device)
+				# print("state in select_action inside 1:\t"+str(state))
+				# print("state type inside 1:\t"+str(state.dtype))
+				state = torch.tensor(state).reshape(self.state_shape).type(dtype=torch.float32).to(self.device)
+				# print("state in select_action inside 2:\t"+str(state))
 				return int(self.Q(state).argmax(1))
 		else:
 			return np.random.randint(self.num_actions)
