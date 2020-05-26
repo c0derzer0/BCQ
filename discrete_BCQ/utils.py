@@ -3,11 +3,11 @@ import gym
 import numpy as np
 import torch
 
-def ReplayBuffer(state_dim, is_atari, atari_preprocessing, batch_size, buffer_size, device):
+def ReplayBuffer(state_dim, action_dim, is_atari, atari_preprocessing, batch_size, buffer_size, device):
 	if is_atari:
 		return AtariBuffer(state_dim, atari_preprocessing, batch_size, buffer_size, device)
 	else:
-		return StandardBuffer(state_dim, batch_size, buffer_size, device)
+		return StandardBuffer(state_dim, action_dim, batch_size, buffer_size, device)
 
 
 class AtariBuffer(object):
@@ -132,7 +132,7 @@ class AtariBuffer(object):
 
 # Generic replay buffer for standard gym tasks
 class StandardBuffer(object):
-	def __init__(self, state_dim, batch_size, buffer_size, device):
+	def __init__(self, state_dim, action_dim, batch_size, buffer_size, device):
 		self.batch_size = batch_size
 		self.max_size = int(buffer_size)
 		self.device = device
@@ -141,7 +141,7 @@ class StandardBuffer(object):
 		self.crt_size = 0
 
 		self.state = np.zeros((self.max_size, state_dim))
-		self.action = np.zeros((self.max_size, 1))
+		self.action = np.zeros((self.max_size, action_dim))
 		self.next_state = np.array(self.state)
 		self.reward = np.zeros((self.max_size, 1))
 		self.not_done = np.zeros((self.max_size, 1))

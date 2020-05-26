@@ -119,6 +119,16 @@ class discrete_BCQ(object):
 		else:
 			return np.random.randint(self.num_actions)
 
+	def get_q_values(self, state):
+
+		with torch.no_grad():
+			state = torch.FloatTensor(state).reshape(self.state_shape).to(
+				self.device)
+			q, imt, i = self.Q(state)
+			imt = imt.exp()
+			imt = (imt / imt.max(1, keepdim=True)[0] > self.threshold).float()
+		return q, imt, i
+
 
 	def train(self, replay_buffer):
 		# Sample replay buffer
