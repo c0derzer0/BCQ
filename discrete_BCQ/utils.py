@@ -297,7 +297,7 @@ class AtariPreprocessing(object):
 
 
 # Create environment, add wrapper if necessary and create env_properties
-def make_env(env_name, atari_preprocessing):
+def make_env(env_name, atari_preprocessing=None):
 	env = gym.make(env_name)
 
 	is_atari = gym.envs.registry.spec(env_name).entry_point == 'gym.envs.atari:AtariEnv'

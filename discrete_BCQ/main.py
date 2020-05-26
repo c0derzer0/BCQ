@@ -338,7 +338,7 @@ def train_DBCQ(args,
             policy.train(replay_buffer)
 
         if args.do_eval_policy:
-            evaluations.append(eval_policy(policy, args.env, args.seed))
+            evaluations.append(eval_policy(policy, args.env_made, args.seed))
             np.save(f"./results/BCQ_{setting}", evaluations)
 
             training_iters += int(args.parameters["eval_freq"])
@@ -346,10 +346,31 @@ def train_DBCQ(args,
 
     return policy
 
+def eval_policy(policy, env_made, seed, eval_episodes=10):
+    #atari_preprocessing = False
+    #eval_env, _, _, _ = utils.make_env(env_name, atari_preprocessing)
+    eval_env = env_made
+    eval_env.seed(seed + 100)
+
+    avg_reward = 0.
+    for _ in range(eval_episodes):
+        state, done = eval_env.reset(), False
+        while not done:
+            action = policy.select_action(np.array(state), eval=True)
+            state, reward, done, _ = eval_env.step(action)
+            avg_reward += reward
+
+    avg_reward /= eval_episodes
+
+    print("---------------------------------------")
+    print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
+    print("---------------------------------------")
+    return avg_reward
 
 # Runs policy for X episodes and returns average reward
 # A fixed seed is used for the eval environment
 def eval_policy(policy, env_name, seed, eval_episodes=10):
+    #atari_preprocessing = False
     eval_env, _, _, _ = utils.make_env(env_name, atari_preprocessing)
     eval_env.seed(seed + 100)
 
@@ -388,13 +409,14 @@ class dargs:
                  max_timesteps=1e6, BCQ_threshold=0.3,
                  do_eval_policy = False,
                  low_noise_p=0.2, rand_action_p=0.2,
+                 env_made=None
                  ):
         self.env_properties = defaultdict()
         self.parameters = defaultdict()
         self.env = env
         self.seed = seed
         self.buffer_name = buffer_name
-
+        self.env_made = env_made
         self.max_timesteps = max_timesteps
         self.BCQ_threshold = BCQ_threshold
         self.do_eval_policy = do_eval_policy
