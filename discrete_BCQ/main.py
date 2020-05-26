@@ -338,7 +338,7 @@ def train_DBCQ(args,
             policy.train(replay_buffer)
 
         if args.do_eval_policy:
-            evaluations.append(eval_policy(policy, args.env_made, args.seed))
+            evaluations.append(eval_policy_dbcq(policy, args.env_made, args.seed))
             np.save(f"./results/BCQ_{setting}", evaluations)
 
         training_iters += int(args.parameters["eval_freq"])
@@ -346,7 +346,7 @@ def train_DBCQ(args,
 
     return policy
 
-def eval_policy(policy, env_made, seed, eval_episodes=10):
+def eval_policy_dbcq(policy, env_made, seed, eval_episodes=10):
     #atari_preprocessing = False
     #eval_env, _, _, _ = utils.make_env(env_name, atari_preprocessing)
     eval_env = env_made
