@@ -108,13 +108,18 @@ class discrete_BCQ(object):
 	def select_action(self, state, eval=False):
 		# Select action according to policy with probability (1-eps)
 		# otherwise, select random action
+		#print(f'state {state}')
 		if np.random.uniform(0,1) > self.eval_eps:
 			with torch.no_grad():
 				state = torch.FloatTensor(state).reshape(self.state_shape).to(self.device)
+				# print(f'state {self.state_shape}')
+				# print(f'state {state}')
 				q, imt, i = self.Q(state)
+				# print(f'q, imt, i {q, imt, i}')
 				imt = imt.exp()
 				imt = (imt/imt.max(1, keepdim=True)[0] > self.threshold).float()
 				# Use large negative number to mask actions from argmax
+				#print((imt * q + (1. - imt) * -1e8).argmax(1, keepdim=True))
 				return int((imt * q + (1. - imt) * -1e8).argmax(1))
 		else:
 			return np.random.randint(self.num_actions)
@@ -134,6 +139,10 @@ class discrete_BCQ(object):
 		# Sample replay buffer
 		state, action, next_state, reward, done = replay_buffer.sample()
 
+		#print(
+			 #f"state, action, next_state, reward, don {state, action, next_state, reward, done}")
+
+		#print(f'next_state {next_state}')
 		# Compute the target Q value
 		with torch.no_grad():
 			q, imt, i = self.Q(next_state)
@@ -142,6 +151,7 @@ class discrete_BCQ(object):
 
 			# Use large negative number to mask actions from argmax
 			next_action = (imt * q + (1 - imt) * -1e8).argmax(1, keepdim=True)
+			#print(f'next_action {next_action}')
 
 			q, imt, i = self.Q_target(next_state)
 			target_Q = reward + done * self.discount * q.gather(1, next_action).reshape(-1, 1)

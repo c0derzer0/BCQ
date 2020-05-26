@@ -234,42 +234,42 @@ def train_BCQ(env, replay_buffer, is_atari, state_dim, num_actions, args,
     setting = f"{args.env}_{args.seed}"
     buffer_name = f"{args.buffer_name}_{setting}"
 
-    # # Initialize and load policy
-    # policy = discrete_BCQ.discrete_BCQ(
-    #     is_atari,
-    #     num_actions,
-    #     state_dim,
-    #     device,
-    #     args.BCQ_threshold,
-    #     parameters["discount"],
-    #     parameters["optimizer"],
-    #     parameters["optimizer_parameters"],
-    #     parameters["polyak_target_update"],
-    #     parameters["target_update_freq"],
-    #     parameters["tau"],
-    #     parameters["initial_eps"],
-    #     parameters["end_eps"],
-    #     parameters["eps_decay_period"],
-    #     parameters["eval_eps"]
-    # )
-
+    # Initialize and load policy
     policy = discrete_BCQ.discrete_BCQ(
         is_atari,
         num_actions,
         state_dim,
         device,
         args.BCQ_threshold,
-        args.parameters["discount"],
-        args.parameters["optimizer"],
-        args.parameters["optimizer_parameters"],
-        args.parameters["polyak_target_update"],
-        args.parameters["target_update_freq"],
-        args.parameters["tau"],
-        args.parameters["initial_eps"],
-        args.parameters["end_eps"],
-        args.parameters["eps_decay_period"],
-        args.parameters["eval_eps"]
+        parameters["discount"],
+        parameters["optimizer"],
+        parameters["optimizer_parameters"],
+        parameters["polyak_target_update"],
+        parameters["target_update_freq"],
+        parameters["tau"],
+        parameters["initial_eps"],
+        parameters["end_eps"],
+        parameters["eps_decay_period"],
+        parameters["eval_eps"]
     )
+
+    # policy = discrete_BCQ.discrete_BCQ(
+    #     is_atari,
+    #     num_actions,
+    #     state_dim,
+    #     device,
+    #     args.BCQ_threshold,
+    #     args.parameters["discount"],
+    #     args.parameters["optimizer"],
+    #     args.parameters["optimizer_parameters"],
+    #     args.parameters["polyak_target_update"],
+    #     args.parameters["target_update_freq"],
+    #     args.parameters["tau"],
+    #     args.parameters["initial_eps"],
+    #     args.parameters["end_eps"],
+    #     args.parameters["eps_decay_period"],
+    #     args.parameters["eval_eps"]
+    # )
 
     # Load replay buffer
     replay_buffer.load(f"./buffers/{buffer_name}")
@@ -299,6 +299,13 @@ def train_DBCQ(args,
     # For saving files
     setting = f"{args.env}_{args.seed}"
     buffer_name = f"{args.buffer_name}_{setting}"
+
+
+    if not os.path.exists("./results"):
+        os.makedirs("./results")
+
+    if not os.path.exists("./models"):
+        os.makedirs("./models")
 
     policy = discrete_BCQ.discrete_BCQ(
         args.env_properties["atari"],
@@ -355,8 +362,10 @@ def eval_policy_dbcq(policy, env_made, seed, eval_episodes=10):
     avg_reward = 0.
     for _ in range(eval_episodes):
         state, done = eval_env.reset(), False
+        #print(state)
         while not done:
-            action = policy.select_action(np.array(state), eval=True)
+            action = policy.select_action(np.array([state]), eval=True)
+            #print(action)
             state, reward, done, _ = eval_env.step(action)
             avg_reward += reward
 
