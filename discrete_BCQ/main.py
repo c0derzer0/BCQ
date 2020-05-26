@@ -341,8 +341,8 @@ def train_DBCQ(args,
             evaluations.append(eval_policy(policy, args.env_made, args.seed))
             np.save(f"./results/BCQ_{setting}", evaluations)
 
-            training_iters += int(args.parameters["eval_freq"])
-            print(f"Training iterations: {training_iters}")
+        training_iters += int(args.parameters["eval_freq"])
+        print(f"Training iterations: {training_iters}")
 
     return policy
 
