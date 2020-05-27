@@ -132,7 +132,9 @@ class discrete_BCQ(object):
 			q, imt, i = self.Q(state)
 			imt = imt.exp()
 			imt = (imt / imt.max(1, keepdim=True)[0] > self.threshold).float()
-		return q, imt, i
+			print((imt * q + (1. - imt) * -1e8))
+			fq = torch.max(imt * q + (1. - imt) * -1e8)
+		return q, imt, i, fq
 
 
 	def train(self, replay_buffer):

@@ -219,7 +219,9 @@ def generate_buffer_from_dataset(dataset, vars_in_single_time_step,
 
         # # Store data in replay buffer
         # replay_buffer.add(state, action, next_state, reward, done_bool)
-
+    if action_vars > 1:
+        replay_buffer.action = replay_buffer.action.dot(
+            1 << np.arange(replay_buffer.action.shape[-1] - 1, -1, -1)).reshape(-1, 1)
     # print(replay_buffer.state)
     if not os.path.exists("./buffers"):
         os.makedirs("./buffers")
@@ -252,6 +254,8 @@ def train_BCQ(env, replay_buffer, is_atari, state_dim, num_actions, args,
         parameters["eps_decay_period"],
         parameters["eval_eps"]
     )
+    print(f'num_actions {num_actions}')
+    print(f'num_actions {state_dim}')
 
     # policy = discrete_BCQ.discrete_BCQ(
     #     is_atari,
@@ -290,6 +294,8 @@ def train_BCQ(env, replay_buffer, is_atari, state_dim, num_actions, args,
 
             training_iters += int(parameters["eval_freq"])
             print(f"Training iterations: {training_iters}")
+
+
 
     return policy
 
@@ -347,6 +353,10 @@ def train_DBCQ(args,
         if args.do_eval_policy:
             evaluations.append(eval_policy_dbcq(policy, args.env_made, args.seed))
             np.save(f"./results/BCQ_{setting}", evaluations)
+        else:
+            state, action, next_state, reward, done = replay_buffer.sample()
+            q, imt, i, fq = policy.get_q_values(np.array(state))
+            print(f'q, imt, i, fq {torch.max(q), imt, i, fq}')
 
         training_iters += int(args.parameters["eval_freq"])
         print(f"Training iterations: {training_iters}")
@@ -592,7 +602,7 @@ if __name__ == "__main__":
                                                            atari_preprocessing)
     parameters = atari_parameters if is_atari else regular_parameters
 
-    action_dim = parameters['action_dim']
+    action_dim = args.action_dim
     env.seed(args.seed)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
